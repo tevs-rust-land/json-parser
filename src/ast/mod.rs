@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 pub enum JSON {
     Bool,
-    Null,
     StringType,
     NumberType,
     Object(ObjectType),
