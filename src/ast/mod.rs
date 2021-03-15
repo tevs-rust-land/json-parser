@@ -15,5 +15,5 @@ pub struct StringType;
 pub struct NumberType;
 
 pub struct ObjectType {
-    body: HashMap<String, JSON>,
+    pub body: HashMap<String, JSON>,
 }
