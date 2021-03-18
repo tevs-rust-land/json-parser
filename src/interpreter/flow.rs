@@ -25,7 +25,7 @@ fn iterate_object(object: &ObjectType) -> String {
         result.push_str(&flow_element.execute());
         result.push_str("; ");
     }
-    result.push_str(" }}");
+    result.push_str("}}");
     result
 }
 
