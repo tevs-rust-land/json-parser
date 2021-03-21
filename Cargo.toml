@@ -1,5 +1,5 @@
 [package]
-name = "parser"
+name = "json_type_parser"
 version = "0.1.0"
 authors = ["Tevinthuku <tevinthuku@gmail.com>"]
 edition = "2018"

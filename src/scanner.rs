@@ -1,44 +1,10 @@
+use crate::token::{self, Position, Token, TokenWithContext};
 use itertools::{multipeek, MultiPeek};
 use std::str;
 
-pub enum Token {
-    LeftBrace,
-    RightBrace,
-    LeftBracket,
-    RightBracket,
-    Colon,
-    SemiColon,
-}
-
-#[derive(Copy, Clone)]
-pub struct Position {
-    pub line: usize,
-    pub column: usize,
-}
-
-impl Position {
-    fn initial() -> Position {
-        Position { line: 1, column: 1 }
-    }
-
-    fn increment_column(&mut self) {
-        self.column += 1;
-    }
-
-    fn increment_line(&mut self) {
-        self.line += 1;
-        self.column = 1;
-    }
-}
-
-pub struct TokenWithContext {
-    pub token: Token,
-    pub lexeme: String,
-    pub position: Position,
-}
-
+#[derive(Debug)]
 pub enum ScannerError {
-    MissingElement(Token, Position),
+    MissingStringTerminator(Position),
 }
 
 struct Scanner<'a> {
@@ -90,10 +56,58 @@ impl<'a> Scanner<'a> {
             ']' => Ok(Token::RightBracket),
             '{' => Ok(Token::LeftBrace),
             '}' => Ok(Token::RightBrace),
+            ':' => Ok(Token::Colon),
+            ',' => Ok(Token::Comma),
+            c if token::is_nextline(c) => Ok(Token::NextLine),
+            c if token::is_whitespace(c) => Ok(Token::Whitespace),
+            c if token::is_digit(c) => self.digit(),
+            '"' => self.string(),
             _ => unimplemented!(),
         };
 
         Some(result.map(|token| self.add_context(token, initial_position)))
+    }
+    fn peek_check(&mut self, check: &dyn Fn(char) -> bool) -> bool {
+        self.source.reset_peek();
+        match self.source.peek() {
+            Some(&c) => check(c),
+            None => false,
+        }
+    }
+    fn advance_if_match(&mut self, expected: char) -> bool {
+        if self.peek_check(&|c| c == expected) {
+            let _ = self.advance();
+            true
+        } else {
+            false
+        }
+    }
+    fn advance_while(&mut self, condition: &dyn Fn(char) -> bool) {
+        while self.peek_check(condition) {
+            self.advance();
+        }
+    }
+    fn string(&mut self) -> Result<Token, ScannerError> {
+        self.advance_while(&|c| c != '"' && c != '\n');
+        if !self.advance_if_match('"') {
+            return Err(ScannerError::MissingStringTerminator(self.current_position));
+        }
+        let literal_length = self.current_lexeme.len() - 2;
+        let literal: String = self
+            .current_lexeme
+            .chars()
+            .skip(1)
+            .take(literal_length)
+            .collect();
+
+        Ok(Token::StringLiteral(literal))
+    }
+
+    fn digit(&mut self) -> Result<Token, ScannerError> {
+        self.advance_while(&|c| c != '\n' && c != ',');
+        let literal_length = self.current_lexeme.len();
+        let num = self.current_lexeme.chars().take(literal_length).collect();
+        Ok(Token::DigitLiteral(num))
     }
 }
 
@@ -106,4 +120,28 @@ impl<'a> Iterator for TokensIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         self.scanner.scan_next()
     }
+}
+
+pub fn scan_into_iterator<'a>(
+    source: &'a str,
+) -> impl Iterator<Item = Result<TokenWithContext, ScannerError>> + 'a {
+    TokensIterator {
+        scanner: Scanner::initialize(source),
+    }
+}
+
+pub fn scan(source: &str) -> (Vec<TokenWithContext>, Vec<ScannerError>) {
+    let mut tokens = Vec::new();
+    let mut errors = Vec::new();
+
+    for result in scan_into_iterator(source) {
+        match result {
+            Ok(token_with_context) => match token_with_context.token {
+                Token::Whitespace => {}
+                _ => tokens.push(token_with_context),
+            },
+            Err(error) => errors.push(error),
+        }
+    }
+    (tokens, errors)
 }
