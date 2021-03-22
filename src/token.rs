@@ -33,7 +33,7 @@ pub fn is_whitespace(c: char) -> bool {
     matches!(c, ' ' | '\r' | '\t')
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
