@@ -2,7 +2,7 @@ use crate::token::{self, Position, Token, TokenWithContext};
 use itertools::{multipeek, MultiPeek};
 use std::str;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ScannerError {
     MissingStringTerminator(Position),
 }
@@ -144,4 +144,39 @@ pub fn scan(source: &str) -> (Vec<TokenWithContext>, Vec<ScannerError>) {
         }
     }
     (tokens, errors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_scanner_returns_missing_string_terminator_error_for_unterminated_string_value() {
+        let json_string = r#"
+        {
+            "name": "Tev 
+        }
+        "#;
+        let (_tokens, scanner_errors) = scan(&json_string);
+
+        assert_eq!(scanner_errors.len(), 1);
+        assert_eq!(
+            vec![ScannerError::MissingStringTerminator(Position {
+                column: 26,
+                line: 3
+            })],
+            scanner_errors
+        )
+    }
+    #[test]
+
+    fn test_should_successfully_scan_and_produce_tokens_for_valid_json_without_error() {
+        let json_string = r#"
+        {
+            "name": "Tev"
+        }
+        "#;
+        let (_tokens, scanner_errors) = scan(&json_string);
+
+        assert_eq!(scanner_errors.len(), 0);
+    }
 }
