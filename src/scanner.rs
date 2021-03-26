@@ -1,5 +1,6 @@
 use crate::token::{self, Position, Token, TokenWithContext};
-use itertools::{multipeek, MultiPeek};
+use std::iter::Peekable;
+
 use std::str;
 
 #[derive(Debug, PartialEq)]
@@ -10,7 +11,7 @@ pub enum ScannerError {
 struct Scanner<'a> {
     current_position: Position,
     current_lexeme: String,
-    source: MultiPeek<str::Chars<'a>>,
+    source: Peekable<std::str::Chars<'a>>,
 }
 
 impl<'a> Scanner<'a> {
@@ -18,7 +19,7 @@ impl<'a> Scanner<'a> {
         Scanner {
             current_lexeme: "".into(),
             current_position: Position::initial(),
-            source: multipeek(source.chars()),
+            source: source.chars().peekable(),
         }
     }
 
@@ -68,7 +69,6 @@ impl<'a> Scanner<'a> {
         Some(result.map(|token| self.add_context(token, initial_position)))
     }
     fn peek_check(&mut self, check: &dyn Fn(char) -> bool) -> bool {
-        self.source.reset_peek();
         match self.source.peek() {
             Some(&c) => check(c),
             None => false,
