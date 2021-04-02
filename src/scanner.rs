@@ -1,5 +1,5 @@
 use crate::token::{self, Position, Token, TokenWithContext};
-use itertools::{multipeek, MultiPeek};
+use std::iter::Peekable;
 use std::str;
 
 #[derive(Debug, PartialEq)]
@@ -10,7 +10,7 @@ pub enum ScannerError {
 struct Scanner<'a> {
     current_position: Position,
     current_lexeme: String,
-    source: MultiPeek<str::Chars<'a>>,
+    source: Peekable<str::Chars<'a>>,
 }
 
 impl<'a> Scanner<'a> {
@@ -18,7 +18,7 @@ impl<'a> Scanner<'a> {
         Scanner {
             current_lexeme: "".into(),
             current_position: Position::initial(),
-            source: multipeek(source.chars()),
+            source: source.chars().into_iter().peekable(),
         }
     }
 
@@ -60,7 +60,7 @@ impl<'a> Scanner<'a> {
             ',' => Ok(Token::Comma),
             c if token::is_nextline(c) => Ok(Token::NextLine),
             c if token::is_whitespace(c) => Ok(Token::Whitespace),
-            c if token::is_digit(c) => self.digit(),
+            c if token::is_digit(c) => Ok(self.digit()),
             '"' => self.string(),
             _ => unimplemented!(),
         };
@@ -68,7 +68,6 @@ impl<'a> Scanner<'a> {
         Some(result.map(|token| self.add_context(token, initial_position)))
     }
     fn peek_check(&mut self, check: &dyn Fn(char) -> bool) -> bool {
-        self.source.reset_peek();
         match self.source.peek() {
             Some(&c) => check(c),
             None => false,
@@ -103,11 +102,11 @@ impl<'a> Scanner<'a> {
         Ok(Token::StringLiteral(literal))
     }
 
-    fn digit(&mut self) -> Result<Token, ScannerError> {
+    fn digit(&mut self) -> Token {
         self.advance_while(&|c| c != '\n' && c != ',');
         let literal_length = self.current_lexeme.len();
         let num = self.current_lexeme.chars().take(literal_length).collect();
-        Ok(Token::DigitLiteral(num))
+        Token::DigitLiteral(num)
     }
 }
 
