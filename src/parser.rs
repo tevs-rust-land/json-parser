@@ -13,6 +13,7 @@ pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
             Token::StringLiteral(_literal) => ast::JSON::StringType,
             _ => todo!(),
         };
+        peekable_tokens.next();
         results.push(element);
     }
 
@@ -31,4 +32,21 @@ fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast;
+    use crate::scanner;
+    #[test]
+    fn test_can_parse_number_type() {
+        let source = r#"12"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+
+        let parsed_results = parse(&scanned_output);
+        assert_eq!(parsed_results, vec![ast::JSON::NumberType])
+    }
+
+    // TODO: Add more tests here for strings ETC..
 }
