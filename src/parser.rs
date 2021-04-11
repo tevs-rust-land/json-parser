@@ -56,4 +56,16 @@ mod tests {
         let parsed_results = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::StringType])
     }
+    #[test]
+    fn test_can_parse_boolean_type() {
+        let source = r#"true"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        assert_eq!(parsed_results, vec![ast::JSON::Bool]);
+
+        let source = r#"false"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        assert_eq!(parsed_results, vec![ast::JSON::Bool])
+    }
 }
