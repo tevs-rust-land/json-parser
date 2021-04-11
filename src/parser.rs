@@ -11,6 +11,7 @@ pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
         let element = match &token.token {
             Token::DigitLiteral(_literal) => ast::JSON::NumberType,
             Token::StringLiteral(_literal) => ast::JSON::StringType,
+            Token::True | Token::False => ast::JSON::Bool,
             _ => todo!(),
         };
         peekable_tokens.next();
@@ -48,5 +49,11 @@ mod tests {
         assert_eq!(parsed_results, vec![ast::JSON::NumberType])
     }
 
-    // TODO: Add more tests here for strings ETC..
+    #[test]
+    fn test_can_parse_string_type() {
+        let source = r#""output""#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        assert_eq!(parsed_results, vec![ast::JSON::StringType])
+    }
 }

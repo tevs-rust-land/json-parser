@@ -62,6 +62,7 @@ impl<'a> Scanner<'a> {
             c if token::is_whitespace(c) => Ok(Token::Whitespace),
             c if token::is_digit(c) => Ok(self.digit()),
             '"' => self.string(),
+            c if token::is_alpha(c) => Ok(self.identifier()),
             _ => unimplemented!(),
         };
 
@@ -107,6 +108,22 @@ impl<'a> Scanner<'a> {
         let literal_length = self.current_lexeme.len();
         let num = self.current_lexeme.chars().take(literal_length).collect();
         Token::DigitLiteral(num)
+    }
+
+    fn identifier(&mut self) -> Token {
+        self.advance_while(&|c| c != '\n' && c != ',');
+        let identifier_length = self.current_lexeme.len();
+        let identifier: String = self
+            .current_lexeme
+            .chars()
+            .take(identifier_length)
+            .collect();
+
+        match identifier.as_str() {
+            "true" => Token::True,
+            "false" => Token::False,
+            _ => unreachable!(),
+        }
     }
 }
 

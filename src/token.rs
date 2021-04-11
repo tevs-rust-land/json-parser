@@ -9,6 +9,8 @@ pub enum Token {
     NextLine,
     Whitespace,
     Comma,
+    False,
+    True,
     DigitLiteral(String),
     StringLiteral(String),
 }
