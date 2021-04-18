@@ -114,10 +114,10 @@ mod tests {
         let source = r#"[true, false]"#;
         let (scanned_output, _errors) = scanner::scan(source);
         let parsed_results = parse(&scanned_output);
-        let inner_array = ast::ArrayType {
+        let array_body = ast::ArrayType {
             body: vec![ast::JSON::Bool, ast::JSON::Bool],
         };
-        let json_array = vec![ast::JSON::Array(inner_array)];
+        let json_array = vec![ast::JSON::Array(array_body)];
 
         assert_eq!(parsed_results, json_array)
     }
@@ -126,10 +126,10 @@ mod tests {
         let source = r#"["tev", "codes"]"#;
         let (scanned_output, _errors) = scanner::scan(source);
         let parsed_results = parse(&scanned_output);
-        let inner_array = ast::ArrayType {
+        let array_body = ast::ArrayType {
             body: vec![ast::JSON::StringType, ast::JSON::StringType],
         };
-        let json_array = vec![ast::JSON::Array(inner_array)];
+        let json_array = vec![ast::JSON::Array(array_body)];
         assert_eq!(parsed_results, json_array)
     }
 
@@ -138,10 +138,10 @@ mod tests {
         let source = r#"[20, 21]"#;
         let (scanned_output, _errors) = scanner::scan(source);
         let parsed_results = parse(&scanned_output);
-        let inner_array = ast::ArrayType {
+        let array_body = ast::ArrayType {
             body: vec![ast::JSON::NumberType, ast::JSON::NumberType],
         };
-        let json_array = vec![ast::JSON::Array(inner_array)];
+        let json_array = vec![ast::JSON::Array(array_body)];
         assert_eq!(parsed_results, json_array)
     }
 }
