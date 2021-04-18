@@ -50,22 +50,18 @@ mod iterate {
     use ast::{ArrayType, JSONError};
     pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
         let mut array_body = vec![];
-        let mut was_array_closed = false;
         while let Some(token) = peekable_tokens.peek() {
             match &token.token {
                 Token::RightBracket => {
-                    was_array_closed = true;
-                    break;
+                    peekable_tokens.next();
+                    return ast::JSON::Array(ArrayType { body: array_body });
                 }
                 token => array_body.push(token.into()),
             }
             peekable_tokens.next();
         }
-        
-        match was_array_closed {
-            true => ast::JSON::Array(ArrayType { body: array_body }),
-            false => ast::JSON::Error(JSONError::UnterminatedArray),
-        }
+
+        ast::JSON::Error(JSONError::UnterminatedArray)
     }
 }
 
