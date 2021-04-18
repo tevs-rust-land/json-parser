@@ -7,6 +7,7 @@ pub enum JSON {
     NumberType,
     Object(ObjectType),
     Array(ArrayType),
+    Error(JSONError),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -18,4 +19,10 @@ pub struct NumberType;
 #[derive(Debug, PartialEq, Eq)]
 pub struct ObjectType {
     pub body: HashMap<String, JSON>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+
+pub enum JSONError {
+    UnterminatedArray,
 }
