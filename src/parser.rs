@@ -14,8 +14,8 @@ pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
             Token::True | Token::False => ast::JSON::Bool,
             Token::LeftBracket => {
                 peekable_tokens.next();
-                let json_array = iterate::over_array(&mut peekable_tokens);
-                ast::JSON::Array(json_array)
+                let array_body = iterate::over_array(&mut peekable_tokens);
+                ast::JSON::Array(array_body)
             }
             _ => todo!(),
         };
