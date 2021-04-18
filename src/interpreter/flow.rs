@@ -12,6 +12,7 @@ impl Interpreter for Flow<'_> {
             JSON::StringType => "string".to_string(),
             JSON::Array(arr) => iterate_array(arr),
             JSON::Object(object) => iterate_object(object),
+            _ => unreachable!(),
         }
     }
 }

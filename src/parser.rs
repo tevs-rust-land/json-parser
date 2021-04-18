@@ -2,8 +2,11 @@ use crate::ast;
 use crate::token::{Token, TokenWithContext};
 use std::{iter::Peekable, slice::Iter};
 
-pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
+pub fn parse(
+    tokens: &[TokenWithContext],
+) -> (std::vec::Vec<ast::JSON>, std::vec::Vec<ast::JSONError>) {
     let mut results: Vec<ast::JSON> = vec![];
+    let mut errors: Vec<ast::JSONError> = vec![];
     let mut peekable_tokens = tokens.iter().peekable();
     skip_initial_new_lines(&mut peekable_tokens);
 
@@ -14,16 +17,18 @@ pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
             Token::True | Token::False => ast::JSON::Bool,
             Token::LeftBracket => {
                 peekable_tokens.next();
-                let array_body = iterate::over_array(&mut peekable_tokens);
-                ast::JSON::Array(array_body)
+                iterate::over_array(&mut peekable_tokens)
             }
             _ => todo!(),
         };
         peekable_tokens.next();
-        results.push(element);
+        match element {
+            ast::JSON::Error(err) => errors.push(err),
+            element => results.push(element),
+        }
     }
 
-    results
+    (results, errors)
 }
 
 fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) {
@@ -42,12 +47,14 @@ fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>
 
 mod iterate {
     use super::*;
-    use ast::ArrayType;
-    pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::ArrayType {
+    use ast::{ArrayType, JSONError};
+    pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
         let mut array_body = vec![];
+        let mut was_array_closed = false;
         while let Some(token) = peekable_tokens.peek() {
             match &token.token {
                 Token::RightBracket => {
+                    was_array_closed = true;
                     peekable_tokens.next();
                     break;
                 }
@@ -57,7 +64,11 @@ mod iterate {
                 }
             }
         }
-        ArrayType { body: array_body }
+
+        match was_array_closed {
+            true => ast::JSON::Array(ArrayType { body: array_body }),
+            false => ast::JSON::Error(JSONError::UnterminatedArray),
+        }
     }
 }
 
@@ -77,6 +88,8 @@ impl From<&Token> for ast::JSON {
 
 #[cfg(test)]
 mod tests {
+    use ast::JSONError;
+
     use super::*;
     use crate::ast;
     use crate::scanner;
@@ -85,7 +98,7 @@ mod tests {
         let source = r#"12"#;
         let (scanned_output, _errors) = scanner::scan(source);
 
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::NumberType])
     }
 
@@ -93,19 +106,19 @@ mod tests {
     fn test_can_parse_string_type() {
         let source = r#""output""#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::StringType])
     }
     #[test]
     fn test_can_parse_boolean_type() {
         let source = r#"true"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::Bool]);
 
         let source = r#"false"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::Bool])
     }
 
@@ -113,7 +126,7 @@ mod tests {
     fn test_can_parse_boolean_array_type() {
         let source = r#"[true, false]"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         let array_body = ast::ArrayType {
             body: vec![ast::JSON::Bool, ast::JSON::Bool],
         };
@@ -125,7 +138,7 @@ mod tests {
     fn test_can_parse_string_array_type() {
         let source = r#"["tev", "codes"]"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         let array_body = ast::ArrayType {
             body: vec![ast::JSON::StringType, ast::JSON::StringType],
         };
@@ -137,11 +150,21 @@ mod tests {
     fn test_can_parse_integer_array_type() {
         let source = r#"[20, 21]"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        let parsed_results = parse(&scanned_output);
+        let (parsed_results, _errors) = parse(&scanned_output);
         let array_body = ast::ArrayType {
             body: vec![ast::JSON::NumberType, ast::JSON::NumberType],
         };
         let json_array = vec![ast::JSON::Array(array_body)];
         assert_eq!(parsed_results, json_array)
+    }
+
+    #[test]
+    fn test_can_capture_unterminated_array() {
+        let source = r#"[20, 21"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let (_parsed_results, errors) = parse(&scanned_output);
+        assert_eq!(errors.len(), 1);
+        let error = JSONError::UnterminatedArray;
+        assert_eq!(errors, vec![error])
     }
 }
