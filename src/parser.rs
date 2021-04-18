@@ -110,16 +110,38 @@ mod tests {
     }
 
     #[test]
-    fn test_can_parse_array_type() {
+    fn test_can_parse_boolean_array_type() {
         let source = r#"[true, false]"#;
         let (scanned_output, _errors) = scanner::scan(source);
         let parsed_results = parse(&scanned_output);
-        println!("{:?}", parsed_results);
         let inner_array = ast::ArrayType {
             body: vec![ast::JSON::Bool, ast::JSON::Bool],
         };
         let json_array = vec![ast::JSON::Array(inner_array)];
 
+        assert_eq!(parsed_results, json_array)
+    }
+    #[test]
+    fn test_can_parse_string_array_type() {
+        let source = r#"["tev", "codes"]"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        let inner_array = ast::ArrayType {
+            body: vec![ast::JSON::StringType, ast::JSON::StringType],
+        };
+        let json_array = vec![ast::JSON::Array(inner_array)];
+        assert_eq!(parsed_results, json_array)
+    }
+
+    #[test]
+    fn test_can_parse_integer_array_type() {
+        let source = r#"[20, 21]"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        let inner_array = ast::ArrayType {
+            body: vec![ast::JSON::NumberType, ast::JSON::NumberType],
+        };
+        let json_array = vec![ast::JSON::Array(inner_array)];
         assert_eq!(parsed_results, json_array)
     }
 }
