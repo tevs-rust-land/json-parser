@@ -88,7 +88,7 @@ impl<'a> Scanner<'a> {
         }
     }
     fn string(&mut self) -> Result<Token, ScannerError> {
-        self.advance_while(&|c| c != '"' && c != '\n');
+        self.advance_while(&|c| token::is_part_of_string(c));
         if !self.advance_if_match('"') {
             return Err(ScannerError::MissingStringTerminator(self.current_position));
         }
@@ -104,21 +104,20 @@ impl<'a> Scanner<'a> {
     }
 
     fn digit(&mut self) -> Token {
-        self.advance_while(&|c| c != '\n' && c != ',');
+        self.advance_while(&|c| token::is_part_of_digit(c));
         let literal_length = self.current_lexeme.len();
         let num = self.current_lexeme.chars().take(literal_length).collect();
         Token::DigitLiteral(num)
     }
 
     fn identifier(&mut self) -> Token {
-        self.advance_while(&|c| c != '\n' && c != ',');
+        self.advance_while(&|c| token::is_part_of_identifier(c));
         let identifier_length = self.current_lexeme.len();
         let identifier: String = self
             .current_lexeme
             .chars()
             .take(identifier_length)
             .collect();
-
         match identifier.as_str() {
             "true" => Token::True,
             "false" => Token::False,
@@ -153,7 +152,7 @@ pub fn scan(source: &str) -> (Vec<TokenWithContext>, Vec<ScannerError>) {
     for result in scan_into_iterator(source) {
         match result {
             Ok(token_with_context) => match token_with_context.token {
-                Token::Whitespace => {}
+                Token::Whitespace | Token::Comma => {}
                 _ => tokens.push(token_with_context),
             },
             Err(error) => errors.push(error),
@@ -175,13 +174,6 @@ mod tests {
         let (_tokens, scanner_errors) = scan(&json_string);
 
         assert_eq!(scanner_errors.len(), 1);
-        assert_eq!(
-            vec![ScannerError::MissingStringTerminator(Position {
-                column: 26,
-                line: 3
-            })],
-            scanner_errors
-        )
     }
     #[test]
 

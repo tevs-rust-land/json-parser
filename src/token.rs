@@ -35,6 +35,18 @@ pub fn is_whitespace(c: char) -> bool {
     matches!(c, ' ' | '\r' | '\t')
 }
 
+pub fn is_part_of_identifier(c: char) -> bool {
+    ('a'..='z').contains(&c) || ('A'..='Z').contains(&c)
+}
+
+pub fn is_part_of_digit(c: char) -> bool {
+    is_digit(c) || c == '.'
+}
+
+pub fn is_part_of_string(c: char) -> bool {
+    c != '"'
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Position {
     pub line: usize,

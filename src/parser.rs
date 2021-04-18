@@ -12,6 +12,11 @@ pub fn parse(tokens: &[TokenWithContext]) -> std::vec::Vec<ast::JSON> {
             Token::DigitLiteral(_literal) => ast::JSON::NumberType,
             Token::StringLiteral(_literal) => ast::JSON::StringType,
             Token::True | Token::False => ast::JSON::Bool,
+            Token::LeftBracket => {
+                peekable_tokens.next();
+                let json_array = iterate::over_array(&mut peekable_tokens);
+                ast::JSON::Array(json_array)
+            }
             _ => todo!(),
         };
         peekable_tokens.next();
@@ -30,6 +35,41 @@ fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>
             }
             _ => {
                 break;
+            }
+        }
+    }
+}
+
+mod iterate {
+    use super::*;
+    use ast::ArrayType;
+    pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::ArrayType {
+        let mut array_body = vec![];
+        while let Some(token) = peekable_tokens.peek() {
+            match &token.token {
+                Token::RightBracket => {
+                    peekable_tokens.next();
+                    break;
+                }
+                token => {
+                    peekable_tokens.next();
+                    array_body.push(token.into())
+                }
+            }
+        }
+        ArrayType { body: array_body }
+    }
+}
+
+impl From<&Token> for ast::JSON {
+    fn from(token: &Token) -> Self {
+        match token {
+            Token::DigitLiteral(_literal) => ast::JSON::NumberType,
+            Token::StringLiteral(_literal) => ast::JSON::StringType,
+            Token::True | Token::False => ast::JSON::Bool,
+            t => {
+                println!("{:?}", t);
+                todo!()
             }
         }
     }
@@ -67,5 +107,19 @@ mod tests {
         let (scanned_output, _errors) = scanner::scan(source);
         let parsed_results = parse(&scanned_output);
         assert_eq!(parsed_results, vec![ast::JSON::Bool])
+    }
+
+    #[test]
+    fn test_can_parse_array_type() {
+        let source = r#"[true, false]"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let parsed_results = parse(&scanned_output);
+        println!("{:?}", parsed_results);
+        let inner_array = ast::ArrayType {
+            body: vec![ast::JSON::Bool, ast::JSON::Bool],
+        };
+        let json_array = vec![ast::JSON::Array(inner_array)];
+
+        assert_eq!(parsed_results, json_array)
     }
 }
