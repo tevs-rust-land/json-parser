@@ -55,16 +55,13 @@ mod iterate {
             match &token.token {
                 Token::RightBracket => {
                     was_array_closed = true;
-                    peekable_tokens.next();
                     break;
                 }
-                token => {
-                    peekable_tokens.next();
-                    array_body.push(token.into())
-                }
+                token => array_body.push(token.into()),
             }
+            peekable_tokens.next();
         }
-
+        
         match was_array_closed {
             true => ast::JSON::Array(ArrayType { body: array_body }),
             false => ast::JSON::Error(JSONError::UnterminatedArray),
