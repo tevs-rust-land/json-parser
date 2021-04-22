@@ -184,4 +184,14 @@ mod tests {
 
         assert_eq!(parsed_results, json_object)
     }
+
+    #[test]
+    fn test_can_capture_unterminated_object() {
+        let source = r#"{"name": "12""#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let (_parsed_results, errors) = parse(&scanned_output);
+        assert_eq!(errors.len(), 1);
+        let error = JSONError::UnterminatedObject;
+        assert_eq!(errors, vec![error])
+    }
 }
