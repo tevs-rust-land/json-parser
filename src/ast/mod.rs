@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum JSON {
     Bool,
@@ -18,7 +16,7 @@ pub struct StringType;
 pub struct NumberType;
 #[derive(Debug, PartialEq, Eq)]
 pub struct ObjectType {
-    pub body: HashMap<String, JSON>,
+    pub body: Vec<JSON>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

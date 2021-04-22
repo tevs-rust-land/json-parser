@@ -1,6 +1,5 @@
 use crate::ast;
 use crate::token::{Token, TokenWithContext};
-use std::collections::HashMap;
 use std::{iter::Peekable, slice::Iter};
 
 fn process_token_to_ast(
@@ -17,7 +16,7 @@ fn process_token_to_ast(
         }
         Token::LeftBrace => {
             peekable_tokens.next();
-            todo!()
+            iterate::over_object(peekable_tokens)
         }
 
         _ => todo!(),
@@ -60,7 +59,7 @@ fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>
 
 mod iterate {
     use super::*;
-    use ast::{ArrayType, JSONError};
+    use ast::{ArrayType, JSONError, ObjectType};
     pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
         let mut array_body = vec![];
         while let Some(token) = peekable_tokens.peek() {
@@ -83,9 +82,9 @@ mod iterate {
             match &token.token {
                 Token::RightBrace => {
                     peekable_tokens.next();
-                    break;
+                    return ast::JSON::Object(ObjectType { body: object_body });
                 }
-                _ => object_body.push(token),
+                _ => object_body.push(process_token_to_ast(token, peekable_tokens)),
             }
         }
         if object_body.len() % 2 != 0 {
@@ -93,19 +92,6 @@ mod iterate {
         } else {
             todo!()
         }
-    }
-
-    fn map_array_of_tokens_to_object(tokens: &[TokenWithContext]) -> ast::JSON {
-        let mut iter = tokens.rchunks(2);
-        let mut object_body = HashMap::new();
-        while let Some([key, value]) = iter.next() {
-            let key = match &key.token {
-                Token::StringLiteral(key) => key.to_owned(),
-                _ => return ast::JSON::Error(JSONError::UnexprectedObjectKey),
-            };
-            object_body.insert(key, value);
-        }
-        ast::JSON::Object(ast::ObjectType { body: object_body })
     }
 }
 
