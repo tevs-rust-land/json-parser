@@ -1,6 +1,28 @@
 use crate::ast;
 use crate::token::{Token, TokenWithContext};
+use std::collections::HashMap;
 use std::{iter::Peekable, slice::Iter};
+
+fn process_token_to_ast(
+    token: &TokenWithContext,
+    peekable_tokens: &mut Peekable<Iter<TokenWithContext>>,
+) -> ast::JSON {
+    match &token.token {
+        Token::DigitLiteral(_literal) => ast::JSON::NumberType,
+        Token::StringLiteral(_literal) => ast::JSON::StringType,
+        Token::True | Token::False => ast::JSON::Bool,
+        Token::LeftBracket => {
+            peekable_tokens.next();
+            iterate::over_array(peekable_tokens)
+        }
+        Token::LeftBrace => {
+            peekable_tokens.next();
+            todo!()
+        }
+
+        _ => todo!(),
+    }
+}
 
 pub fn parse(
     tokens: &[TokenWithContext],
@@ -11,16 +33,7 @@ pub fn parse(
     skip_initial_new_lines(&mut peekable_tokens);
 
     while let Some(token) = peekable_tokens.peek() {
-        let element = match &token.token {
-            Token::DigitLiteral(_literal) => ast::JSON::NumberType,
-            Token::StringLiteral(_literal) => ast::JSON::StringType,
-            Token::True | Token::False => ast::JSON::Bool,
-            Token::LeftBracket => {
-                peekable_tokens.next();
-                iterate::over_array(&mut peekable_tokens)
-            }
-            _ => todo!(),
-        };
+        let element = process_token_to_ast(token, &mut peekable_tokens);
         peekable_tokens.next();
         match element {
             ast::JSON::Error(err) => errors.push(err),
@@ -56,26 +69,43 @@ mod iterate {
                     peekable_tokens.next();
                     return ast::JSON::Array(ArrayType { body: array_body });
                 }
-                token => array_body.push(token.into()),
+                _t => array_body.push(process_token_to_ast(token, peekable_tokens)),
             }
             peekable_tokens.next();
         }
 
         ast::JSON::Error(JSONError::UnterminatedArray)
     }
-}
 
-impl From<&Token> for ast::JSON {
-    fn from(token: &Token) -> Self {
-        match token {
-            Token::DigitLiteral(_literal) => ast::JSON::NumberType,
-            Token::StringLiteral(_literal) => ast::JSON::StringType,
-            Token::True | Token::False => ast::JSON::Bool,
-            t => {
-                println!("{:?}", t);
-                todo!()
+    pub fn over_object(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
+        let mut object_body = vec![];
+        while let Some(token) = peekable_tokens.next() {
+            match &token.token {
+                Token::RightBrace => {
+                    peekable_tokens.next();
+                    break;
+                }
+                _ => object_body.push(token),
             }
         }
+        if object_body.len() % 2 != 0 {
+            ast::JSON::Error(JSONError::UnterminatedObject)
+        } else {
+            todo!()
+        }
+    }
+
+    fn map_array_of_tokens_to_object(tokens: &[TokenWithContext]) -> ast::JSON {
+        let mut iter = tokens.rchunks(2);
+        let mut object_body = HashMap::new();
+        while let Some([key, value]) = iter.next() {
+            let key = match &key.token {
+                Token::StringLiteral(key) => key.to_owned(),
+                _ => return ast::JSON::Error(JSONError::UnexprectedObjectKey),
+            };
+            object_body.insert(key, value);
+        }
+        ast::JSON::Object(ast::ObjectType { body: object_body })
     }
 }
 
@@ -159,5 +189,11 @@ mod tests {
         assert_eq!(errors.len(), 1);
         let error = JSONError::UnterminatedArray;
         assert_eq!(errors, vec![error])
+    }
+    #[test]
+    fn test_can_parse_object() {
+        let source = r#"{"name": "12"}"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        println!("{:?}", scanned_output)
     }
 }

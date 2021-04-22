@@ -25,4 +25,6 @@ pub struct ObjectType {
 
 pub enum JSONError {
     UnterminatedArray,
+    UnterminatedObject,
+    UnexprectedObjectKey,
 }
