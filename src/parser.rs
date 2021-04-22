@@ -87,11 +87,7 @@ mod iterate {
                 _ => object_body.push(process_token_to_ast(token, peekable_tokens)),
             }
         }
-        if object_body.len() % 2 != 0 {
-            ast::JSON::Error(JSONError::UnterminatedObject)
-        } else {
-            todo!()
-        }
+        ast::JSON::Error(JSONError::UnterminatedObject)
     }
 }
 
@@ -180,6 +176,12 @@ mod tests {
     fn test_can_parse_object() {
         let source = r#"{"name": "12"}"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        println!("{:?}", scanned_output)
+        let (parsed_results, _errors) = parse(&scanned_output);
+        let object_type = ast::ObjectType {
+            body: vec![ast::JSON::StringType, ast::JSON::StringType],
+        };
+        let json_object = vec![ast::JSON::Object(object_type)];
+
+        assert_eq!(parsed_results, json_object)
     }
 }
