@@ -8,7 +8,7 @@ fn process_token_to_ast(
 ) -> ast::JSON {
     match &token.token {
         Token::DigitLiteral(_literal) => ast::JSON::NumberType,
-        Token::StringLiteral(_literal) => ast::JSON::StringType,
+        Token::StringLiteral(literal) => ast::JSON::StringType(literal.clone()),
         Token::True | Token::False => ast::JSON::Bool,
         Token::Colon => ast::JSON::Colon,
         Token::LeftBracket => {
@@ -131,7 +131,7 @@ mod tests {
         let source = r#""output""#;
         let (scanned_output, _errors) = scanner::scan(source);
         let (parsed_results, _errors) = parse(&scanned_output);
-        assert_eq!(parsed_results, vec![ast::JSON::StringType])
+        assert_eq!(parsed_results, vec![ast::JSON::StringType("output".into())])
     }
     #[test]
     fn test_can_parse_boolean_type() {
@@ -164,7 +164,10 @@ mod tests {
         let (scanned_output, _errors) = scanner::scan(source);
         let (parsed_results, _errors) = parse(&scanned_output);
         let array_body = ast::ArrayType {
-            body: vec![ast::JSON::StringType, ast::JSON::StringType],
+            body: vec![
+                ast::JSON::StringType("tev".into()),
+                ast::JSON::StringType("codes".into()),
+            ],
         };
         let json_array = vec![ast::JSON::Array(array_body)];
         assert_eq!(parsed_results, json_array)
@@ -198,9 +201,9 @@ mod tests {
         let (parsed_results, _errors) = parse(&scanned_output);
         let object_type = ast::ObjectType {
             body: vec![
-                ast::JSON::StringType,
+                ast::JSON::StringType("name".into()),
                 ast::JSON::Colon,
-                ast::JSON::StringType,
+                ast::JSON::StringType("12".into()),
             ],
         };
         let json_object = vec![ast::JSON::Object(object_type)];
@@ -224,14 +227,14 @@ mod tests {
         let (scanned_output, _errors) = scanner::scan(source);
         let inner_object = ast::ObjectType {
             body: vec![
-                ast::JSON::StringType,
+                ast::JSON::StringType("age".into()),
                 ast::JSON::Colon,
                 ast::JSON::NumberType,
             ],
         };
         let object_type = ast::ObjectType {
             body: vec![
-                ast::JSON::StringType,
+                ast::JSON::StringType("user".into()),
                 ast::JSON::Colon,
                 ast::JSON::Object(inner_object),
             ],
@@ -247,19 +250,19 @@ mod tests {
         let (scanned_output, _errors) = scanner::scan(source);
         let inner_object = ast::ObjectType {
             body: vec![
-                ast::JSON::StringType,
+                ast::JSON::StringType("age".into()),
                 ast::JSON::Colon,
                 ast::JSON::NumberType,
             ],
         };
         let object_type = ast::ObjectType {
             body: vec![
-                ast::JSON::StringType,
+                ast::JSON::StringType("user".into()),
                 ast::JSON::Colon,
                 ast::JSON::Object(inner_object),
-                ast::JSON::StringType,
+                ast::JSON::StringType("company".into()),
                 ast::JSON::Colon,
-                ast::JSON::StringType,
+                ast::JSON::StringType("Apple".into()),
             ],
         };
         let result = vec![ast::JSON::Object(object_type)];

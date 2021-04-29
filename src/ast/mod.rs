@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum JSON {
     Bool,
-    StringType,
+    StringType(String),
     NumberType,
     Object(ObjectType),
     Array(ArrayType),
