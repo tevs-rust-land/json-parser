@@ -66,6 +66,9 @@ mod iterate {
         while let Some(token) = peekable_tokens.peek() {
             match &token.token {
                 Token::RightBracket => {
+                    if is_next_token_a_non_closing_token(peekable_tokens) {
+                        peekable_tokens.next();
+                    }
                     return ast::JSON::Array(ArrayType { body: array_body });
                 }
                 _t => array_body.push(process_token_to_ast(token, peekable_tokens)),
@@ -78,9 +81,13 @@ mod iterate {
 
     pub fn over_object(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
         let mut object_body = vec![];
+
         while let Some(token) = peekable_tokens.peek() {
             match &token.token {
                 Token::RightBrace => {
+                    if is_next_token_a_non_closing_token(peekable_tokens) {
+                        peekable_tokens.next();
+                    }
                     return ast::JSON::Object(ObjectType { body: object_body });
                 }
                 _ => {
@@ -90,6 +97,16 @@ mod iterate {
             peekable_tokens.next();
         }
         ast::JSON::Error(JSONError::UnterminatedObject)
+    }
+
+    fn is_next_token_a_non_closing_token(
+        peekable_tokens: &mut Peekable<Iter<TokenWithContext>>,
+    ) -> bool {
+        let token = peekable_tokens.peek();
+        match token {
+            Some(token) => !matches!(&token.token, Token::RightBrace | Token::RightBracket),
+            None => false,
+        }
     }
 }
 
@@ -217,6 +234,32 @@ mod tests {
                 ast::JSON::StringType,
                 ast::JSON::Colon,
                 ast::JSON::Object(inner_object),
+            ],
+        };
+        let result = vec![ast::JSON::Object(object_type)];
+        let (parsed_results, _errors) = parse(&scanned_output);
+        assert_eq!(result, parsed_results)
+    }
+
+    #[test]
+    fn test_can_capture_more_deeply_nested_object() {
+        let source = r#"{"user": { "age": 12 }, "company": "Apple" }"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let inner_object = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType,
+                ast::JSON::Colon,
+                ast::JSON::NumberType,
+            ],
+        };
+        let object_type = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType,
+                ast::JSON::Colon,
+                ast::JSON::Object(inner_object),
+                ast::JSON::StringType,
+                ast::JSON::Colon,
+                ast::JSON::StringType,
             ],
         };
         let result = vec![ast::JSON::Object(object_type)];
