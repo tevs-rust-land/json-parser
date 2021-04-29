@@ -6,6 +6,7 @@ pub enum JSON {
     Object(ObjectType),
     Array(ArrayType),
     Error(JSONError),
+    Colon,
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -152,7 +152,7 @@ pub fn scan(source: &str) -> (Vec<TokenWithContext>, Vec<ScannerError>) {
     for result in scan_into_iterator(source) {
         match result {
             Ok(token_with_context) => match token_with_context.token {
-                Token::Whitespace | Token::Comma | Token::Colon => {}
+                Token::Whitespace | Token::Comma => {}
                 _ => tokens.push(token_with_context),
             },
             Err(error) => errors.push(error),
