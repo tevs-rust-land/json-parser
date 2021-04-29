@@ -205,9 +205,22 @@ mod tests {
     fn test_can_capture_nested_object() {
         let source = r#"{"user": { "age": 12 } }"#;
         let (scanned_output, _errors) = scanner::scan(source);
-        println!("{:?}", scanned_output);
-
-        let (parsed_results, errors) = parse(&scanned_output);
-        println!("{:?}", parsed_results);
+        let inner_object = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType,
+                ast::JSON::Colon,
+                ast::JSON::NumberType,
+            ],
+        };
+        let object_type = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType,
+                ast::JSON::Colon,
+                ast::JSON::Object(inner_object),
+            ],
+        };
+        let result = vec![ast::JSON::Object(object_type)];
+        let (parsed_results, _errors) = parse(&scanned_output);
+        assert_eq!(result, parsed_results)
     }
 }
