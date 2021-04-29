@@ -2,6 +2,28 @@ use crate::ast;
 use crate::token::{Token, TokenWithContext};
 use std::{iter::Peekable, slice::Iter};
 
+fn process_token_to_ast(
+    token: &TokenWithContext,
+    peekable_tokens: &mut Peekable<Iter<TokenWithContext>>,
+) -> ast::JSON {
+    match &token.token {
+        Token::DigitLiteral(_literal) => ast::JSON::NumberType,
+        Token::StringLiteral(literal) => ast::JSON::StringType(literal.clone()),
+        Token::True | Token::False => ast::JSON::Bool,
+        Token::Colon => ast::JSON::Colon,
+        Token::LeftBracket => {
+            peekable_tokens.next();
+            iterate::over_array(peekable_tokens)
+        }
+        Token::LeftBrace => {
+            peekable_tokens.next();
+            iterate::over_object(peekable_tokens)
+        }
+
+        _ => todo!(),
+    }
+}
+
 pub fn parse(
     tokens: &[TokenWithContext],
 ) -> (std::vec::Vec<ast::JSON>, std::vec::Vec<ast::JSONError>) {
@@ -11,16 +33,7 @@ pub fn parse(
     skip_initial_new_lines(&mut peekable_tokens);
 
     while let Some(token) = peekable_tokens.peek() {
-        let element = match &token.token {
-            Token::DigitLiteral(_literal) => ast::JSON::NumberType,
-            Token::StringLiteral(_literal) => ast::JSON::StringType,
-            Token::True | Token::False => ast::JSON::Bool,
-            Token::LeftBracket => {
-                peekable_tokens.next();
-                iterate::over_array(&mut peekable_tokens)
-            }
-            _ => todo!(),
-        };
+        let element = process_token_to_ast(token, &mut peekable_tokens);
         peekable_tokens.next();
         match element {
             ast::JSON::Error(err) => errors.push(err),
@@ -47,34 +60,52 @@ fn skip_initial_new_lines(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>
 
 mod iterate {
     use super::*;
-    use ast::{ArrayType, JSONError};
+    use ast::{ArrayType, JSONError, ObjectType};
     pub fn over_array(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
         let mut array_body = vec![];
         while let Some(token) = peekable_tokens.peek() {
             match &token.token {
                 Token::RightBracket => {
-                    peekable_tokens.next();
+                    if is_next_token_a_non_closing_token(peekable_tokens) {
+                        peekable_tokens.next();
+                    }
                     return ast::JSON::Array(ArrayType { body: array_body });
                 }
-                token => array_body.push(token.into()),
+                _t => array_body.push(process_token_to_ast(token, peekable_tokens)),
             }
             peekable_tokens.next();
         }
 
         ast::JSON::Error(JSONError::UnterminatedArray)
     }
-}
 
-impl From<&Token> for ast::JSON {
-    fn from(token: &Token) -> Self {
-        match token {
-            Token::DigitLiteral(_literal) => ast::JSON::NumberType,
-            Token::StringLiteral(_literal) => ast::JSON::StringType,
-            Token::True | Token::False => ast::JSON::Bool,
-            t => {
-                println!("{:?}", t);
-                todo!()
+    pub fn over_object(peekable_tokens: &mut Peekable<Iter<TokenWithContext>>) -> ast::JSON {
+        let mut object_body = vec![];
+
+        while let Some(token) = peekable_tokens.peek() {
+            match &token.token {
+                Token::RightBrace => {
+                    if is_next_token_a_non_closing_token(peekable_tokens) {
+                        peekable_tokens.next();
+                    }
+                    return ast::JSON::Object(ObjectType { body: object_body });
+                }
+                _ => {
+                    object_body.push(process_token_to_ast(token, peekable_tokens));
+                }
             }
+            peekable_tokens.next();
+        }
+        ast::JSON::Error(JSONError::UnterminatedObject)
+    }
+
+    fn is_next_token_a_non_closing_token(
+        peekable_tokens: &mut Peekable<Iter<TokenWithContext>>,
+    ) -> bool {
+        let token = peekable_tokens.peek();
+        match token {
+            Some(token) => !matches!(&token.token, Token::RightBrace | Token::RightBracket),
+            None => false,
         }
     }
 }
@@ -100,7 +131,7 @@ mod tests {
         let source = r#""output""#;
         let (scanned_output, _errors) = scanner::scan(source);
         let (parsed_results, _errors) = parse(&scanned_output);
-        assert_eq!(parsed_results, vec![ast::JSON::StringType])
+        assert_eq!(parsed_results, vec![ast::JSON::StringType("output".into())])
     }
     #[test]
     fn test_can_parse_boolean_type() {
@@ -133,7 +164,10 @@ mod tests {
         let (scanned_output, _errors) = scanner::scan(source);
         let (parsed_results, _errors) = parse(&scanned_output);
         let array_body = ast::ArrayType {
-            body: vec![ast::JSON::StringType, ast::JSON::StringType],
+            body: vec![
+                ast::JSON::StringType("tev".into()),
+                ast::JSON::StringType("codes".into()),
+            ],
         };
         let json_array = vec![ast::JSON::Array(array_body)];
         assert_eq!(parsed_results, json_array)
@@ -159,5 +193,80 @@ mod tests {
         assert_eq!(errors.len(), 1);
         let error = JSONError::UnterminatedArray;
         assert_eq!(errors, vec![error])
+    }
+    #[test]
+    fn test_can_parse_object() {
+        let source = r#"{"name": "12"}"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let (parsed_results, _errors) = parse(&scanned_output);
+        let object_type = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType("name".into()),
+                ast::JSON::Colon,
+                ast::JSON::StringType("12".into()),
+            ],
+        };
+        let json_object = vec![ast::JSON::Object(object_type)];
+
+        assert_eq!(parsed_results, json_object)
+    }
+
+    #[test]
+    fn test_can_capture_unterminated_object() {
+        let source = r#"{"name": "12""#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let (_parsed_results, errors) = parse(&scanned_output);
+        assert_eq!(errors.len(), 1);
+        let error = JSONError::UnterminatedObject;
+        assert_eq!(errors, vec![error])
+    }
+
+    #[test]
+    fn test_can_capture_nested_object() {
+        let source = r#"{"user": { "age": 12 } }"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let inner_object = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType("age".into()),
+                ast::JSON::Colon,
+                ast::JSON::NumberType,
+            ],
+        };
+        let object_type = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType("user".into()),
+                ast::JSON::Colon,
+                ast::JSON::Object(inner_object),
+            ],
+        };
+        let result = vec![ast::JSON::Object(object_type)];
+        let (parsed_results, _errors) = parse(&scanned_output);
+        assert_eq!(result, parsed_results)
+    }
+
+    #[test]
+    fn test_can_capture_more_deeply_nested_object() {
+        let source = r#"{"user": { "age": 12 }, "company": "Apple" }"#;
+        let (scanned_output, _errors) = scanner::scan(source);
+        let inner_object = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType("age".into()),
+                ast::JSON::Colon,
+                ast::JSON::NumberType,
+            ],
+        };
+        let object_type = ast::ObjectType {
+            body: vec![
+                ast::JSON::StringType("user".into()),
+                ast::JSON::Colon,
+                ast::JSON::Object(inner_object),
+                ast::JSON::StringType("company".into()),
+                ast::JSON::Colon,
+                ast::JSON::StringType("Apple".into()),
+            ],
+        };
+        let result = vec![ast::JSON::Object(object_type)];
+        let (parsed_results, _errors) = parse(&scanned_output);
+        assert_eq!(result, parsed_results)
     }
 }

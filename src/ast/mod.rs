@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum JSON {
     Bool,
-    StringType,
+    StringType(String),
     NumberType,
     Object(ObjectType),
     Array(ArrayType),
     Error(JSONError),
+    Colon,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -18,11 +17,12 @@ pub struct StringType;
 pub struct NumberType;
 #[derive(Debug, PartialEq, Eq)]
 pub struct ObjectType {
-    pub body: HashMap<String, JSON>,
+    pub body: Vec<JSON>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 
 pub enum JSONError {
     UnterminatedArray,
+    UnterminatedObject,
 }
